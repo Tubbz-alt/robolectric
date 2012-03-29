@@ -133,6 +133,7 @@ public class ShadowIntent {
 
     @Implementation
     public Intent setClass(Context packageContext, Class<?> cls) {
+        componentName = new ComponentName(packageContext, cls);
         this.intentClass = cls;
         return realIntent;
     }

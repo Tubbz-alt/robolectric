@@ -169,11 +169,14 @@ public class IntentTest {
     public void testSetClass() throws Exception {
         Intent intent = new Intent();
         Class<? extends IntentTest> thisClass = getClass();
-        Intent output = intent.setClass(new Activity(), thisClass);
+        Intent output = intent.setClass(new PackageNameActivity("package.name"), thisClass);
 
         assertSame(output, intent);
         ShadowIntent si = shadowOf(intent);
         assertSame(si.getIntentClass(), thisClass);
+
+        assertSame(thisClass.getName(), intent.getComponent().getClassName());
+        assertEquals("package.name", intent.getComponent().getPackageName());
     }
 
     @Test
@@ -364,7 +367,23 @@ public class IntentTest {
         assertThat(Robolectric.shadowOf(intent.getExtras()).getIntegerArrayList("KEY"), equalTo(integers));
     }
 
-    private static class TestSerializable implements Serializable {
+    private final class PackageNameActivity extends Activity
+	{
+		private final String packageName;
+
+		public PackageNameActivity(String packageName)
+		{
+			this.packageName = packageName;
+		}
+
+		@Override
+		public String getPackageName()
+		{
+			return packageName;
+		}
+	}
+
+	private static class TestSerializable implements Serializable {
         private String someValue;
 
         public TestSerializable(String someValue) {
