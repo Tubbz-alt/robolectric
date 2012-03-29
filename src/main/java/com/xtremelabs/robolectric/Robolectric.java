@@ -28,6 +28,9 @@ import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.*;
 import android.preference.*;
+import android.support.v4.app.DialogFragment;
+import android.support.v4.app.Fragment;
+import android.support.v4.app.FragmentActivity;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.SmsManager;
 import android.telephony.TelephonyManager;
@@ -171,12 +174,15 @@ public class Robolectric {
                 ShadowDisplay.class,
                 ShadowDrawable.class,
                 ShadowDialog.class,
+                ShadowDialogFragment.class,
                 ShadowDialogPreference.class,
                 ShadowEditText.class,
                 ShadowEnvironment.class,
                 ShadowExpandableListView.class,
                 ShadowFilter.class,
                 ShadowFloatMath.class,
+                ShadowFragment.class,
+                ShadowFragmentActivity.class,
                 ShadowFrameLayout.class,
                 ShadowGallery.class,
                 ShadowGeocoder.class,
@@ -302,6 +308,7 @@ public class Robolectric {
                 ShadowViewFlipper.class,
                 ShadowViewMeasureSpec.class,
                 ShadowViewStub.class,
+                ShadowViewTreeObserver.class,
                 ShadowWebSettings.class,
                 ShadowWebView.class,
                 ShadowWifiConfiguration.class,
@@ -509,6 +516,10 @@ public class Robolectric {
         return (ShadowDialog) shadowOf_(instance);
     }
 
+    public static ShadowDialogFragment shadowOf(DialogFragment instance) {
+        return (ShadowDialogFragment) shadowOf_(instance);
+    }
+
     public static ShadowDialogPreference shadowOf(DialogPreference instance) {
         return (ShadowDialogPreference) shadowOf_(instance);
     }
@@ -527,6 +538,14 @@ public class Robolectric {
 
     public static ShadowFilter shadowOf(Filter instance) {
         return (ShadowFilter) shadowOf_(instance);
+    }
+
+    public static ShadowFragment shadowOf(Fragment instance) {
+        return (ShadowFragment) shadowOf_(instance);
+    }
+
+    public static ShadowFragmentActivity shadowOf(FragmentActivity instance) {
+        return (ShadowFragmentActivity) shadowOf_(instance);
     }
 
     public static ShadowFrameLayout shadowOf(FrameLayout instance) {
@@ -842,6 +861,10 @@ public class Robolectric {
         return (ShadowViewFlipper) shadowOf_(instance);
     }
 
+    public static ShadowViewTreeObserver shadowOf(ViewTreeObserver instance) {
+        return (ShadowViewTreeObserver) shadowOf_(instance);
+    }
+
     public static ShadowViewGroup shadowOf(ViewGroup instance) {
         return (ShadowViewGroup) shadowOf_(instance);
     }
@@ -934,6 +957,15 @@ public class Robolectric {
      */
     public static void addPendingHttpResponse(HttpResponse httpResponse) {
         getFakeHttpLayer().addPendingHttpResponse(httpResponse);
+    }
+
+    /**
+     * Sets up an HTTP response to be returned by calls to Apache's {@code HttpClient} implementers.
+     *
+     * @param httpResponseGenerator an HttpResponseGenerator that will provide responses
+     */
+    public static void addPendingHttpResponse(HttpResponseGenerator httpResponseGenerator) {
+        getFakeHttpLayer().addPendingHttpResponse(httpResponseGenerator);
     }
 
     /**

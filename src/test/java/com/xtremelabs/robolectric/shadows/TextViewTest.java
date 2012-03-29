@@ -11,6 +11,7 @@ import android.view.inputmethod.EditorInfo;
 import android.widget.TextView;
 import com.xtremelabs.robolectric.R;
 import com.xtremelabs.robolectric.WithTestDefaultsRunner;
+import junit.framework.Assert;
 import org.hamcrest.CoreMatchers;
 import org.junit.Before;
 import org.junit.Test;
@@ -178,6 +179,16 @@ public class TextViewTest {
     }
 
     @Test
+    public void givenATextViewWithATextWatcherAdded_WhenSettingNullText_ShouldNotifyTextWatcher() {
+        MockTextWatcher mockTextWatcher = new MockTextWatcher();
+        textView.addTextChangedListener(mockTextWatcher);
+
+        textView.setText(null);
+
+        assertEachTextWatcherEventWasInvoked(mockTextWatcher);
+    }
+
+    @Test
     public void givenATextViewWithMultipleTextWatchersAdded_WhenSettingText_ShouldNotifyEachTextWatcher() {
         List<MockTextWatcher> mockTextWatchers = anyNumberOfTextWatchers();
         for (MockTextWatcher textWatcher : mockTextWatchers) {
@@ -300,6 +311,26 @@ public class TextViewTest {
         textView.append("3");
         assertEquals(3, textView.getSelectionEnd());
         assertEquals(0, textView.getSelectionStart());
+    }
+
+    @Test
+    public void testSetCompountDrawablesWithIntrinsicBounds_int_shouldCreateDrawablesWithResourceIds() throws Exception {
+        textView.setCompoundDrawablesWithIntrinsicBounds(6, 7, 8, 9);
+
+        Assert.assertEquals(6, shadowOf(textView.getCompoundDrawables()[0]).getLoadedFromResourceId());
+        Assert.assertEquals(7, shadowOf(textView.getCompoundDrawables()[1]).getLoadedFromResourceId());
+        Assert.assertEquals(8, shadowOf(textView.getCompoundDrawables()[2]).getLoadedFromResourceId());
+        Assert.assertEquals(9, shadowOf(textView.getCompoundDrawables()[3]).getLoadedFromResourceId());
+    }
+
+    @Test
+    public void testSetCompountDrawablesWithIntrinsicBounds_int_shouldNotCreateDrawablesForZero() throws Exception {
+        textView.setCompoundDrawablesWithIntrinsicBounds(0, 0, 0, 0);
+
+        Assert.assertNull(textView.getCompoundDrawables()[0]);
+        Assert.assertNull(textView.getCompoundDrawables()[1]);
+        Assert.assertNull(textView.getCompoundDrawables()[2]);
+        Assert.assertNull(textView.getCompoundDrawables()[3]);
     }
 
     private List<MockTextWatcher> anyNumberOfTextWatchers() {
