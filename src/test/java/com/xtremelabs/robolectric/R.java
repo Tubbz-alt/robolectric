@@ -53,6 +53,7 @@ public final class R {
 
         public static final int fragment = nextId++;
         public static final int dynamic_fragment_container = nextId++;
+        public static final int content_view = nextId++;
     }
 
     public static final class string {
@@ -103,6 +104,7 @@ public final class R {
         public static final int rainbow = nextId++;
         public static final int state_drawable = nextId++;
         public static final int animation_list = nextId++;
+        public static final int nine_patch_drawable = nextId++;
     }
 
     public static final class layout {

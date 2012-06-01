@@ -3,6 +3,8 @@ package com.xtremelabs.robolectric.shadows;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+
+import com.xtremelabs.robolectric.Robolectric;
 import com.xtremelabs.robolectric.internal.Implementation;
 import com.xtremelabs.robolectric.internal.Implements;
 import com.xtremelabs.robolectric.internal.RealObject;
@@ -95,6 +97,7 @@ public class ShadowHandler {
 
     @Implementation
     public final boolean sendMessageDelayed(final Message msg, long delayMillis) {
+        Robolectric.shadowOf(msg).setWhen(Robolectric.shadowOf(looper).getScheduler().getCurrentTime()+delayMillis);
         messages.add(msg);
         postDelayed(new Runnable() {
             @Override
@@ -126,6 +129,22 @@ public class ShadowHandler {
         final Message msg = new Message();
         msg.what = what;
         return sendMessageDelayed(msg, delayMillis);
+    }
+
+    @Implementation
+    public final boolean sendMessageAtFrontOfQueue(final Message msg) {
+        Robolectric.shadowOf(msg).setWhen(Robolectric.shadowOf(looper).getScheduler().getCurrentTime());
+        messages.add(0, msg);
+        postAtFrontOfQueue(new Runnable() {
+            @Override
+            public void run() {
+                if (messages.contains(msg)) {
+                    routeMessage(msg);
+                    messages.remove(msg);
+                }
+            }
+        });
+        return true;
     }
 
     @Implementation

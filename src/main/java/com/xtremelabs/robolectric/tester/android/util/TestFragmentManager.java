@@ -1,6 +1,8 @@
 package com.xtremelabs.robolectric.tester.android.util;
 
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.support.v4.app.*;
 import android.view.View;
 import android.view.ViewGroup;
@@ -23,6 +25,7 @@ public class TestFragmentManager extends FragmentManager {
     private Map<String, Fragment> fragmentsByTag = new HashMap<String, Fragment>();
     private FragmentActivity activity;
     private List<TestFragmentTransaction> transactions = new ArrayList<TestFragmentTransaction>();
+    private List<Runnable> transactionsToRunLater = new ArrayList<Runnable>();
 
     public TestFragmentManager(FragmentActivity activity) {
         this.activity = activity;
@@ -39,6 +42,13 @@ public class TestFragmentManager extends FragmentManager {
 
     @Override
     public boolean executePendingTransactions() {
+        if (transactionsToRunLater.size() > 0) {
+            for (Runnable runnable : new ArrayList<Runnable>(transactionsToRunLater)) {
+                runnable.run();
+                shadowOf(Looper.getMainLooper()).getScheduler().remove(runnable);
+            }
+            return true;
+        }
         return false;
     }
 
@@ -131,13 +141,14 @@ public class TestFragmentManager extends FragmentManager {
         fragmentsById.put(containerViewId, fragment);
         fragmentsByTag.put(tag, fragment);
 
-        shadowOf(fragment).setTag(tag);
-        shadowOf(fragment).setContainerViewId(containerViewId);
-        shadowOf(fragment).setShouldReplace(replace);
+        ShadowFragment shadowFragment = shadowOf(fragment);
+        shadowFragment.setTag(tag);
+        shadowFragment.setContainerViewId(containerViewId);
+        shadowFragment.setShouldReplace(replace);
+        shadowFragment.setActivity(activity);
 
-        shadowOf(fragment).setActivity(activity);
         fragment.onAttach(activity);
-        fragment.onCreate(shadowOf(fragment).getSavedInstanceState());
+        fragment.onCreate(shadowFragment.getSavedInstanceState());
     }
 
     public void startFragment(Fragment fragment) {
@@ -155,7 +166,9 @@ public class TestFragmentManager extends FragmentManager {
             if (shadowFragment.getShouldReplace()) {
                 container.removeAllViews();
             }
-            container.addView(view);
+            if (view != null) {
+                container.addView(view);
+            }
         }
 
         fragment.onActivityCreated(shadowFragment.getSavedInstanceState());
@@ -172,7 +185,30 @@ public class TestFragmentManager extends FragmentManager {
 
     public void commitTransaction(TestFragmentTransaction t) {
         transactions.add(t);
-        addFragment(t.getContainerViewId(), t.getTag(), t.getFragment(), t.isReplacing());
-        startFragment(t.getFragment());
+        if (t.isStarting()) {
+            addFragment(t.getContainerViewId(), t.getTag(), t.getFragment(), t.isReplacing());
+            startFragment(t.getFragment());
+        }
+        if (t.isRemoving()) {
+            Fragment fragment = t.getFragmentToRemove();
+            if (fragment instanceof DialogFragment) {
+                ((DialogFragment)fragment).dismiss();
+            }
+        }
+        if (t.isAttaching()) {
+            shadowOf(t.getFragmentToAttach()).setAttached(true);
+        }
+    }
+
+    void commitLater(final TestFragmentTransaction testFragmentTransaction) {
+        Runnable transactionCommit = new Runnable() {
+            @Override
+            public void run() {
+                commitTransaction(testFragmentTransaction);
+                transactionsToRunLater.remove(this);
+            }
+        };
+        transactionsToRunLater.add(transactionCommit);
+        new Handler().post(transactionCommit);
     }
 }

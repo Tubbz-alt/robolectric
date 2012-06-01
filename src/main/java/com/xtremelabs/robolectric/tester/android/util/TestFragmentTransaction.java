@@ -1,6 +1,5 @@
 package com.xtremelabs.robolectric.tester.android.util;
 
-import android.os.Handler;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentTransaction;
 import android.view.View;
@@ -12,8 +11,15 @@ public class TestFragmentTransaction extends FragmentTransaction {
     private String tag;
     private Fragment fragment;
     private boolean replacing;
+    private boolean starting;
+    private boolean removing;
     private boolean addedToBackStack;
     private String backStackName;
+    private int lastEnterAnimation;
+    private int lastExitAnimation;
+    private Fragment fragmentToRemove;
+    private boolean committedAllowingStateLoss;
+    private Fragment fragmentToAttach;
 
     public TestFragmentTransaction(TestFragmentManager fragmentManager) {
         this.fragmentManager = fragmentManager;
@@ -34,6 +40,7 @@ public class TestFragmentTransaction extends FragmentTransaction {
         this.containerViewId = containerViewId;
         this.tag = tag;
         this.fragment = fragment;
+        this.starting = true;
         return this;
     }
 
@@ -48,12 +55,15 @@ public class TestFragmentTransaction extends FragmentTransaction {
         this.tag = tag;
         this.fragment = fragment;
         this.replacing = true;
+        this.starting = true;
         return this;
     }
 
     @Override
     public FragmentTransaction remove(Fragment fragment) {
-        return null;
+        this.fragmentToRemove = fragment;
+        this.removing = true;
+        return this;
     }
 
     @Override
@@ -73,7 +83,8 @@ public class TestFragmentTransaction extends FragmentTransaction {
 
     @Override
     public FragmentTransaction attach(Fragment fragment) {
-        return null;
+        fragmentToAttach = fragment;
+        return this;
     }
 
     @Override
@@ -83,7 +94,9 @@ public class TestFragmentTransaction extends FragmentTransaction {
 
     @Override
     public FragmentTransaction setCustomAnimations(int enter, int exit) {
-        return null;
+        this.lastEnterAnimation = enter;
+        this.lastExitAnimation = exit;
+        return this;
     }
 
     @Override
@@ -140,18 +153,14 @@ public class TestFragmentTransaction extends FragmentTransaction {
 
     @Override
     public int commit() {
-        new Handler().post(new Runnable() {
-            @Override
-            public void run() {
-                fragmentManager.commitTransaction(TestFragmentTransaction.this);
-            }
-        });
+        fragmentManager.commitLater(this);
         return 0;
     }
 
     @Override
     public int commitAllowingStateLoss() {
-        return 0;
+        committedAllowingStateLoss = true;
+        return commit();
     }
 
     public boolean isAddedToBackStack() {
@@ -174,7 +183,43 @@ public class TestFragmentTransaction extends FragmentTransaction {
         return replacing;
     }
 
+    public boolean isStarting() {
+        return starting;
+    }
+
+    public boolean isRemoving() {
+        return removing;
+    }
+
     public String getBackStackName() {
         return backStackName;
+    }
+
+    public int getLastEnterAnimation() {
+        return lastEnterAnimation;
+    }
+
+    public int getLastExitAnimation() {
+        return lastExitAnimation;
+    }
+
+    public TestFragmentManager getManager() {
+        return fragmentManager;
+    }
+
+    public Fragment getFragmentToRemove() {
+        return fragmentToRemove;
+    }
+
+    public boolean isCommittedAllowingStateLoss() {
+        return committedAllowingStateLoss;
+    }
+
+    public boolean isAttaching() {
+        return fragmentToAttach != null;
+    }
+
+    public Fragment getFragmentToAttach() {
+        return fragmentToAttach;
     }
 }

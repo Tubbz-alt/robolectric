@@ -19,6 +19,9 @@ import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertFalse;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @RunWith(WithTestDefaultsRunner.class)
 public class HandlerTest {
     private Transcript transcript;
@@ -195,6 +198,29 @@ public class HandlerTest {
     }
 
     @Test
+    public void testSendMessageAtFrontOfQueueThenRunMainLooperOneMsgAtATime_shouldRunFrontOfQueueMsgFirst() throws Exception {
+        Handler handler = new Handler();
+
+        ShadowLooper.pauseMainLooper();
+        // Post two messages to handler. Handle first message and confirm that msg posted
+        // to front is removed.
+        handler.obtainMessage(123).sendToTarget();
+        Message frontMsg = handler.obtainMessage(345);
+        boolean result = handler.sendMessageAtFrontOfQueue(frontMsg);
+
+        assertTrue(result);
+
+        assertTrue(handler.hasMessages(123));
+        assertTrue(handler.hasMessages(345));
+        ShadowHandler.runMainLooperOneTask();
+        assertTrue(handler.hasMessages(123));
+        assertFalse(handler.hasMessages(345));
+        ShadowHandler.runMainLooperOneTask();
+        assertFalse(handler.hasMessages(123));
+        assertFalse(handler.hasMessages(345));
+    }
+
+    @Test
     public void sendEmptyMessage_addMessageToQueue() {
         Robolectric.pauseMainLooper();
         Handler handler = new Handler();
@@ -315,6 +341,33 @@ public class HandlerTest {
         assertThat(m4.arg1, equalTo(2));
         assertThat(m4.arg2, equalTo(3));
         assertThat(m4.obj, equalTo((Object)"foo"));
+    }
+
+    @Test
+    public void shouldSetWhenOnMessage() throws Exception {
+        final List<Message>  msgs = new ArrayList<Message>();
+        Handler h = new Handler(new Handler.Callback() {
+            @Override
+            public boolean handleMessage(Message msg) {
+                msgs.add(msg);
+                return false;
+            }
+        });
+
+        h.sendEmptyMessage(0);
+        h.sendEmptyMessageDelayed(0, 4000l);
+        Robolectric.getUiThreadScheduler().advanceToLastPostedRunnable();
+        h.sendEmptyMessageDelayed(0, 12000l);
+        Robolectric.getUiThreadScheduler().advanceToLastPostedRunnable();
+        assertThat(msgs.size(), equalTo(3));
+
+        Message m0 = msgs.get(0);
+        Message m1 = msgs.get(1);
+        Message m2 = msgs.get(2);
+
+        assertThat(m0.getWhen(), equalTo(0l));
+        assertThat(m1.getWhen(), equalTo(4000l));
+        assertThat(m2.getWhen(), equalTo(16000l));
     }
 
     private class Say implements Runnable {
