@@ -20,6 +20,7 @@ local.properties
 *.iml
 *.ipr
 *.orig
+*.swp
 *~
 \#*\#
 atlassian-ide-plugin.xml
