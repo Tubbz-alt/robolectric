@@ -13,6 +13,7 @@ import com.xtremelabs.robolectric.internal.RealObject;
 import com.xtremelabs.robolectric.util.Join;
 
 import java.io.*;
+import java.net.*;
 import java.util.*;
 
 import static android.content.Intent.*;
@@ -302,7 +303,7 @@ public class ShadowIntent {
         extras.put(key, value);
         return realIntent;
     }
-    
+
     @Implementation
     public CharSequence getCharSequenceExtra(String name) {
         return (CharSequence) extras.get(name);
@@ -424,9 +425,14 @@ public class ShadowIntent {
         return componentName;
     }
 
+    /**
+     * Call {@link #toUri} with 0 flags.
+     * @deprecated Use {@link #toUri} instead.
+     */
+    @Deprecated
     @Implementation
     public String toURI() {
-        return uri;
+        return toUri(0);
     }
     
     @Implementation
@@ -633,4 +639,290 @@ public class ShadowIntent {
     public void setURI(String uri) {
         this.uri = uri;
     }
+
+    /**
+     * Create an intent from a URI.  This URI may encode the action,
+     * category, and other intent fields, if it was returned by
+     * {@link #toUri}.  If the Intent was not generate by toUri(), its data
+     * will be the entire URI and its action will be ACTION_VIEW.
+     *
+     * <p>The URI given here must not be relative -- that is, it must include
+     * the scheme and full path.
+     *
+     * @param uri The URI to turn into an Intent.
+     * @param flags Additional processing flags.  Either 0 or
+     * {@link Intent#URI_INTENT_SCHEME}.
+     *
+     * @return Intent The newly created Intent object.
+     *
+     * @throws URISyntaxException Throws URISyntaxError if the basic URI syntax
+     * it bad (as parsed by the Uri class) or the Intent data within the
+     * URI is invalid.
+     *
+     * @see #toUri
+     */
+	    @Implementation
+    public static Intent parseUri(String uri, int flags) throws URISyntaxException {
+        int i = 0;
+        try {
+            // Validate intent scheme for if requested.
+            if ((flags& URI_INTENT_SCHEME) != 0) {
+                if (!uri.startsWith("intent:")) {
+                    Intent intent = new Intent(ACTION_VIEW);
+                    try {
+                        intent.setData(Uri.parse(uri));
+                    } catch (IllegalArgumentException e) {
+                        throw new URISyntaxException(uri, e.getMessage());
+                    }
+                    return intent;
+                }
+            }
+
+            // simple case
+            i = uri.lastIndexOf("#");
+            if (i == -1) return new Intent(ACTION_VIEW, Uri.parse(uri));
+
+            // old format Intent URI
+            if (!uri.startsWith("#Intent;", i)) throw new UnsupportedOperationException("Mock does not support old intents");
+
+            // new format
+            Intent intent = new Intent(ACTION_VIEW);
+            final ShadowIntent shadowIntent = Robolectric.shadowOf(intent);
+            Intent baseIntent = intent;
+
+            // fetch data part, if present
+            String data = i >= 0 ? uri.substring(0, i) : null;
+            String scheme = null;
+            i += "#Intent;".length();
+
+            // loop over contents of Intent, all name=value;
+            while (!uri.startsWith("end", i)) {
+                int eq = uri.indexOf('=', i);
+                if (eq < 0) eq = i-1;
+                int semi = uri.indexOf(';', i);
+                String value = eq < semi ? Uri.decode(uri.substring(eq + 1, semi)) : "";
+
+                // action
+                if (uri.startsWith("action=", i)) {
+                    intent.setAction(value);
+                }
+
+                // categories
+                else if (uri.startsWith("category=", i)) {
+                    intent.addCategory(value);
+                }
+
+                // type
+                else if (uri.startsWith("type=", i)) {
+                    shadowIntent.type = value;
+                }
+
+                // launch flags
+                else if (uri.startsWith("launchFlags=", i)) {
+                    shadowIntent.flags = Integer.decode(value).intValue();
+                }
+
+                // package
+                else if (uri.startsWith("package=", i)) {
+                    intent.setPackage(value);
+                }
+
+                // component
+                else if (uri.startsWith("component=", i)) {
+                    intent.setComponent(ComponentName.unflattenFromString(value));
+                }
+
+                // scheme
+                else if (uri.startsWith("scheme=", i)) {
+                    scheme = value;
+                }
+
+                // source bounds
+                else if (uri.startsWith("sourceBounds=", i)) {
+                    intent.setSourceBounds(android.graphics.Rect.unflattenFromString(value));
+                }
+
+                // selector
+                else if (semi == (i+3) && uri.startsWith("SEL", i)) {
+                    intent = new Intent();
+                }
+
+                // extra
+                else {
+                    String key = Uri.decode(uri.substring(i + 2, eq));
+                    // create Bundle if it doesn't already exist
+                    if (shadowIntent.extras == null) shadowIntent.extras = new HashMap<String, Object>();
+                    Map<String, Object> b = shadowIntent.extras;
+                    // add EXTRA
+                    if      (uri.startsWith("S.", i)) b.put(key, value);
+                    else if (uri.startsWith("B.", i)) b.put(key, Boolean.parseBoolean(value));
+                    else if (uri.startsWith("b.", i)) b.put(key, Byte.parseByte(value));
+                    else if (uri.startsWith("c.", i)) b.put(key, value.charAt(0));
+                    else if (uri.startsWith("d.", i)) b.put(key, Double.parseDouble(value));
+                    else if (uri.startsWith("f.", i)) b.put(key, Float.parseFloat(value));
+                    else if (uri.startsWith("i.", i)) b.put(key, Integer.parseInt(value));
+                    else if (uri.startsWith("l.", i)) b.put(key, Long.parseLong(value));
+                    else if (uri.startsWith("s.", i)) b.put(key, Short.parseShort(value));
+                    else throw new URISyntaxException(uri, "unknown EXTRA type", i);
+                }
+
+                // move to the next item
+                i = semi + 1;
+            }
+
+            if (intent != baseIntent) {
+                // The Intent had a selector; fix it up.
+                // baseIntent.setSelector(intent);
+                // intent = baseIntent;
+                throw new UnsupportedOperationException("Robolectric does not support selectors currently");
+            }
+
+            if (data != null) {
+                if (data.startsWith("intent:")) {
+                    data = data.substring(7);
+                    if (scheme != null) {
+                        data = scheme + ':' + data;
+                    }
+                }
+
+                if (data.length() > 0) {
+                    try {
+                        shadowIntent.data = Uri.parse(data);
+                    } catch (IllegalArgumentException e) {
+                        throw new URISyntaxException(uri, e.getMessage());
+                    }
+                }
+            }
+
+            return intent;
+
+        } catch (IndexOutOfBoundsException e) {
+            throw new URISyntaxException(uri, "illegal Intent URI format", i);
+        }
+    }
+
+    /**
+     * Convert this Intent into a String holding a URI representation of it.
+     * The returned URI string has been properly URI encoded, so it can be
+     * used with {@link Uri#parse Uri.parse(String)}.  The URI contains the
+     * Intent's data as the base URI, with an additional fragment describing
+     * the action, categories, type, flags, package, component, and extras.
+     *
+     * <p>You can convert the returned string back to an Intent with
+     * {@link Intent#getIntent}.
+     *
+     * @param flags Additional operating flags.  Either 0 or
+     * {@link Intent#URI_INTENT_SCHEME}.
+     *
+     * @return Returns a URI encoding URI string describing the entire contents
+     * of the Intent.
+     */
+    @Implementation
+    public String toUri(int flags) {
+        if (uri != null) {
+           return uri;
+        }
+        StringBuilder uri = new StringBuilder(128);
+        String scheme = null;
+        if (data != null) {
+            String sdata = data.toString();
+            if ((flags& URI_INTENT_SCHEME) != 0) {
+                final int N = sdata.length();
+                for (int i=0; i<N; i++) {
+                    char c = sdata.charAt(i);
+                    if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
+                            || c == '.' || c == '-') {
+                        continue;
+                    }
+                    if (c == ':' && i > 0) {
+                        // Valid scheme.
+                        scheme = sdata.substring(0, i);
+                        uri.append("intent:");
+                        sdata = sdata.substring(i+1);
+                        break;
+                    }
+
+                    // No scheme.
+                    break;
+                }
+            }
+            uri.append(sdata);
+
+        } else if ((flags& URI_INTENT_SCHEME) != 0) {
+            uri.append("intent:");
+        }
+
+        uri.append("#Intent;");
+
+        toUriInner(uri, scheme, flags);
+        //if (mSelector != null) {
+            //uri.append("SEL;");
+            // Note that for now we are not going to try to handle the
+            // data part; not clear how to represent this as a URI, and
+            // not much utility in it.
+            //mSelector.toUriInner(uri, null, flags);
+        //}
+
+        uri.append("end");
+
+        return uri.toString();
+    }
+
+    private void toUriInner(StringBuilder uri, String scheme, int flags) {
+        if (scheme != null) {
+            uri.append("scheme=").append(scheme).append(';');
+        }
+        if (action != null) {
+            uri.append("action=").append(Uri.encode(action)).append(';');
+        }
+//        if (mCategories != null) {
+//            for (String category : mCategories) {
+//                uri.append("category=").append(Uri.encode(category)).append(';');
+//            }
+//        }
+        if (type != null) {
+            uri.append("type=").append(Uri.encode(type, "/")).append(';');
+        }
+        if (flags != 0) {
+            uri.append("launchFlags=0x").append(Integer.toHexString(flags)).append(';');
+        }
+//        if (mPackage != null) {
+//            uri.append("package=").append(Uri.encode(mPackage)).append(';');
+//        }
+        if (componentName != null) {
+            uri.append("component=").append(Uri.encode(
+                    componentName.flattenToShortString(), "/")).append(';');
+        }
+//        if (mSourceBounds != null) {
+//            uri.append("sourceBounds=")
+//                    .append(Uri.encode(mSourceBounds.flattenToString()))
+//                    .append(';');
+//        }
+        if (extras != null) {
+            for (String key : extras.keySet()) {
+                final Object value = extras.get(key);
+                char entryType =
+                        value instanceof String    ? 'S' :
+                        value instanceof Boolean   ? 'B' :
+                        value instanceof Byte      ? 'b' :
+                        value instanceof Character ? 'c' :
+                        value instanceof Double    ? 'd' :
+                        value instanceof Float     ? 'f' :
+                        value instanceof Integer   ? 'i' :
+                        value instanceof Long      ? 'l' :
+                        value instanceof Short     ? 's' :
+                        '\0';
+
+                if (entryType != '\0') {
+                    uri.append(entryType);
+                    uri.append('.');
+                    uri.append(Uri.encode(key));
+                    uri.append('=');
+                    uri.append(Uri.encode(value.toString()));
+                    uri.append(';');
+                }
+            }
+        }
+    }
+
 }

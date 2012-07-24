@@ -2,6 +2,7 @@ package com.xtremelabs.robolectric.shadows;
 
 import android.app.Activity;
 import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
@@ -55,6 +56,7 @@ public class IntentTest {
         assertSame(intent, intent.putExtra("foo", 2d));
         assertEquals(2d, intent.getExtras().get("foo"));
         assertEquals(2d, intent.getDoubleExtra("foo", -1));
+        assertEquals(-1d, intent.getDoubleExtra("bar", -1));
     }
 
     @Test
@@ -75,7 +77,7 @@ public class IntentTest {
         assertEquals(1, intent.getIntArrayExtra("foo")[0]);
         assertEquals(2, intent.getIntArrayExtra("foo")[1]);
     }
-    
+
     @Test
     public void testLongArrayExtra() throws Exception {
         Intent intent = new Intent();
@@ -375,6 +377,36 @@ public class IntentTest {
         intent.putIntegerArrayListExtra("KEY", integers);
         assertThat(intent.getIntegerArrayListExtra("KEY"), equalTo(integers));
         assertThat(Robolectric.shadowOf(intent.getExtras()).getIntegerArrayList("KEY"), equalTo(integers));
+    }
+
+    @Test
+    public void toUriCapturesIntentDetails()  {
+        Activity context = new Activity();
+        Robolectric.shadowOf(context).setPackageName("com.xtremelabs.robolectric");
+        Intent intent = new Intent(context, this.getClass());
+        intent.setAction(Intent.ACTION_EDIT);
+        intent.setDataAndType(Uri.parse("http://www.example.com"), "myType");
+        intent.putExtra("strex", "stringvalue");
+        intent.putExtra("intex", 5);
+        intent.putExtra("doubleex", 3.14);
+        String expected = "intent:#Intent;action=android.intent.action.EDIT;" +
+                          "launchFlags=0x1;component=com.xtremelabs.robolectric/.shadows.IntentTest;" +
+                          "d.doubleex=3.14;i.intex=5;S.strex=stringvalue;end";
+        assertThat(intent.toUri(Intent.URI_INTENT_SCHEME), equalTo(expected));
+    }
+
+    @Test
+    public void testIntentToUriMatchesThroughUriParse() throws Exception {
+        Intent intent = new Intent();
+        Class<? extends IntentTest> thisClass = getClass();
+        intent.setClassName("package.name", thisClass.getName());
+        intent.putExtra("foo", 123);
+        intent.setAction(Intent.ACTION_DIAL);
+        final String s = intent.toUri(Intent.URI_INTENT_SCHEME);
+
+        final Intent i = Intent.parseUri(s, Intent.URI_INTENT_SCHEME);
+
+        assertEquals(intent, i);
     }
 
     private final class PackageNameActivity extends Activity
