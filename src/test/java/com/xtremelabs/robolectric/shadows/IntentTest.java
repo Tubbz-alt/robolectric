@@ -53,6 +53,11 @@ public class IntentTest {
     @Test
     public void testDoubleExtra() throws Exception {
         Intent intent = new Intent();
+        assertSame(intent, intent.putExtra("pi", 3.14d));
+        assertEquals(3.14, shadowOf(intent).getExtras().get("pi"));
+        assertEquals(3.14, intent.getDoubleExtra("pi", -1), 0.01);
+        assertEquals(2.718, intent.getDoubleExtra("e", 2.718), 0.01);
+
         assertSame(intent, intent.putExtra("foo", 2d));
         assertEquals(2d, intent.getExtras().get("foo"));
         assertEquals(2d, intent.getDoubleExtra("foo", -1));
@@ -151,15 +156,6 @@ public class IntentTest {
         bundle.putInt("bar", 5);
         assertSame(intent, intent.putExtra("foo", bundle));
         assertEquals(5, intent.getBundleExtra("foo").getInt("bar"));
-    }
-
-    @Test
-    public void testDoubleExtra() throws Exception {
-        Intent intent = new Intent();
-        assertSame(intent, intent.putExtra("foo", 3.14));
-        assertEquals(3.14, shadowOf(intent).getExtras().get("foo"));
-        assertEquals(3.14, intent.getDoubleExtra("foo", -1), 0.01);
-        assertEquals(-3.14, intent.getDoubleExtra("bar", -3.14), 0.01);
     }
 
     @Test

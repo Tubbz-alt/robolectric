@@ -207,12 +207,6 @@ public class ShadowIntent {
     }
 
     @Implementation
-    public Intent putExtra(String key, double value) {
-        extras.put(key, value);
-        return realIntent;
-    }
-
-    @Implementation
     public Intent putExtra(String key, float value) {
         extras.put(key, value);
         return realIntent;
@@ -308,12 +302,6 @@ public class ShadowIntent {
     public Intent putExtra(String key, CharSequence value) {
         extras.put(key, value);
         return realIntent;
-    }
-
-    @Implementation
-    public double getDoubleExtra(String name, double defaultValue) {
-        Double foundValue = (Double) extras.get(name);
-        return foundValue == null ? defaultValue : foundValue;
     }
 
     @Implementation
@@ -437,11 +425,6 @@ public class ShadowIntent {
         return componentName;
     }
 
-    @Implementation
-    public String toURI() {
-        return uri;
-    }
-    
     @Implementation
     public int fillIn(Intent otherIntent, int flags) {
         int changes = 0;
@@ -810,12 +793,13 @@ public class ShadowIntent {
 
     /**
      * Call {@link #toUri} with 0 flags.
+     *  Or return the test method setURI's value..
      * @deprecated Use {@link #toUri} instead.
      */
     @Deprecated
     @Implementation
     public String toURI() {
-        return toUri(0);
+        return (uri == null) ? toUri(0) : uri;
     }
 
     /**
