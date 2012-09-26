@@ -425,16 +425,6 @@ public class ShadowIntent {
         return componentName;
     }
 
-    /**
-     * Call {@link #toUri} with 0 flags.
-     * @deprecated Use {@link #toUri} instead.
-     */
-    @Deprecated
-    @Implementation
-    public String toURI() {
-        return toUri(0);
-    }
-    
     @Implementation
     public int fillIn(Intent otherIntent, int flags) {
         int changes = 0;
@@ -802,6 +792,17 @@ public class ShadowIntent {
     }
 
     /**
+     * Call {@link #toUri} with 0 flags.
+     *  Or return the test method setURI's value..
+     * @deprecated Use {@link #toUri} instead.
+     */
+    @Deprecated
+    @Implementation
+    public String toURI() {
+        return (uri == null) ? toUri(0) : uri;
+    }
+
+    /**
      * Convert this Intent into a String holding a URI representation of it.
      * The returned URI string has been properly URI encoded, so it can be
      * used with {@link Uri#parse Uri.parse(String)}.  The URI contains the
@@ -810,6 +811,8 @@ public class ShadowIntent {
      *
      * <p>You can convert the returned string back to an Intent with
      * {@link Intent#getIntent}.
+     *
+     * Note: if you use the Shadow.setURI method, this will return that.
      *
      * @param flags Additional operating flags.  Either 0 or
      * {@link Intent#URI_INTENT_SCHEME}.
