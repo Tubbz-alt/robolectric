@@ -6,6 +6,7 @@ import android.preference.Preference;
 import android.util.AttributeSet;
 
 import com.xtremelabs.robolectric.internal.Implementation;
+import com.xtremelabs.robolectric.internal.ImplementationAverted;
 import com.xtremelabs.robolectric.internal.Implements;
 import com.xtremelabs.robolectric.internal.RealObject;
 
@@ -47,8 +48,48 @@ public class ShadowPreference {
 		this.defStyle = defStyle;
 		
 		if (attributeSet != null) {
-			key = attributeSet.getAttributeValue("android", "key");
-        }
+			applyKeyAttribute();
+			applyTitleAttribute();
+			applySummaryAttribute();
+		}
+	}
+
+	@ImplementationAverted
+	public String toString() {
+		return "<" + ((key == null) ? "no-key" : key) + "/" + ((title == null) ? "no-title" : title) + "> " + super.toString();
+	}
+
+	private void applyKeyAttribute() {
+		String keyValue = attrs.getAttributeValue("android", "key");
+		if (keyValue != null) {
+			if (keyValue.startsWith("@string/")) {
+				int keyResId = attrs.getAttributeResourceValue("android", "key", 0);
+				keyValue = context.getResources().getString(keyResId);
+			}
+			setKey(keyValue);
+		}
+	}
+
+	private void applyTitleAttribute() {
+		String titleValue = attrs.getAttributeValue("android", "title");
+		if (titleValue != null) {
+			if (titleValue.startsWith("@string/")) {
+				int titleResId = attrs.getAttributeResourceValue("android", "title", 0);
+				titleValue = context.getResources().getString(titleResId);
+			}
+			setTitle(titleValue);
+		}
+	}
+
+	private void applySummaryAttribute() {
+		String summaryValue = attrs.getAttributeValue("android", "summary");
+		if (summaryValue != null) {
+			if (summaryValue.startsWith("@string/")) {
+				int summaryResId = attrs.getAttributeResourceValue("android", "summary", 0);
+				summaryValue = context.getResources().getString(summaryResId);
+			}
+			setSummary(summaryValue);
+		}
 	}
 
 	@Implementation

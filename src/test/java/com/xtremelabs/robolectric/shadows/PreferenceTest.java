@@ -79,7 +79,7 @@ public class PreferenceTest {
 		preference = new TestPreference(context, attrs);
 		assertThat( preference.getKey(), equalTo(key) );
 	}
-	
+
 	@Test
 	public void shouldHaveAKey() {
 		String key = "key_value";
@@ -115,7 +115,7 @@ public class PreferenceTest {
 		preference.setSummary(summary);
 		assertThat(preference.getSummary(), equalTo(summary));
 	}
-	
+
 	@Test
 	public void shouldSetSummaryByResourceId() {
 		CharSequence expected = "Hello";
