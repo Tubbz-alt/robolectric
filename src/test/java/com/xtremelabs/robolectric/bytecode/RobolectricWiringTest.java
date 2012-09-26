@@ -2,6 +2,7 @@ package com.xtremelabs.robolectric.bytecode;
 
 import com.xtremelabs.robolectric.Robolectric;
 import com.xtremelabs.robolectric.internal.Implementation;
+import com.xtremelabs.robolectric.internal.ImplementationAverted;
 import com.xtremelabs.robolectric.internal.Implements;
 import com.xtremelabs.robolectric.util.Join;
 import org.junit.Assert;
@@ -78,7 +79,8 @@ public class RobolectricWiringTest {
     private boolean isAnnotatedImplementation(Method shadowMethod) {
         // works around a weird bug causing overridden methods to show no annotations
         try {
-            return shadowMethod.getDeclaringClass().getDeclaredMethod(shadowMethod.getName(), shadowMethod.getParameterTypes()).isAnnotationPresent(Implementation.class);
+	        final Method declaredMethod = shadowMethod.getDeclaringClass().getDeclaredMethod(shadowMethod.getName(), shadowMethod.getParameterTypes());
+	        return declaredMethod.isAnnotationPresent(Implementation.class) || declaredMethod.isAnnotationPresent(ImplementationAverted.class);
         } catch (NoSuchMethodException e) {
             throw new RuntimeException(e);
         }

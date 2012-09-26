@@ -6,6 +6,7 @@ import android.preference.Preference;
 import android.util.AttributeSet;
 
 import com.xtremelabs.robolectric.internal.Implementation;
+import com.xtremelabs.robolectric.internal.ImplementationAverted;
 import com.xtremelabs.robolectric.internal.Implements;
 import com.xtremelabs.robolectric.internal.RealObject;
 
@@ -51,6 +52,11 @@ public class ShadowPreference {
 			applyTitleAttribute();
 			applySummaryAttribute();
 		}
+	}
+
+	@ImplementationAverted
+	public String toString() {
+		return "<" + ((key == null) ? "no-key" : key) + "/" + ((title == null) ? "no-title" : title) + "> " + super.toString();
 	}
 
 	private void applyKeyAttribute() {
