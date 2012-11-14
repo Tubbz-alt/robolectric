@@ -430,6 +430,15 @@ public class ActivityTest {
         assertEquals(5, storedValue.intValue());
     }
 
+	@Test
+	public void allowsAParentToBeSetThroughShadow()
+	{
+		final Activity activity = new Activity();
+		final Activity parentActivity = new Activity();
+		shadowOf(activity).setParent(parentActivity);
+		assertThat(activity.getParent(), is(sameInstance(parentActivity)));
+	}
+
     private static class TestActivity extends Activity {
         Transcript transcript = new Transcript();
 

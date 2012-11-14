@@ -164,6 +164,11 @@ public class ShadowActivity extends ShadowContextWrapper {
         return parent;
     }
 
+	public void setParent(Activity parent)
+	{
+		this.parent = parent;
+	}
+
     @Implementation
     public void onBackPressed() {
         finish();
@@ -350,7 +355,7 @@ public class ShadowActivity extends ShadowContextWrapper {
         onKeyUpWasCalled = false;
     }
 
-    /**
+	/**
      * Container object to hold an Intent, together with the requestCode used
      * in a call to {@code Activity#startActivityForResult(Intent, int)}
      */
