@@ -744,19 +744,17 @@ public class ShadowIntent {
                 // extra
                 else {
                     String key = Uri.decode(uri.substring(i + 2, eq));
-                    // create Bundle if it doesn't already exist
-                    if (shadowIntent.extras == null) shadowIntent.extras = new HashMap<String, Object>();
-                    Map<String, Object> b = shadowIntent.extras;
+                    Bundle b = shadowIntent.extras;
                     // add EXTRA
-                    if      (uri.startsWith("S.", i)) b.put(key, value);
-                    else if (uri.startsWith("B.", i)) b.put(key, Boolean.parseBoolean(value));
-                    else if (uri.startsWith("b.", i)) b.put(key, Byte.parseByte(value));
-                    else if (uri.startsWith("c.", i)) b.put(key, value.charAt(0));
-                    else if (uri.startsWith("d.", i)) b.put(key, Double.parseDouble(value));
-                    else if (uri.startsWith("f.", i)) b.put(key, Float.parseFloat(value));
-                    else if (uri.startsWith("i.", i)) b.put(key, Integer.parseInt(value));
-                    else if (uri.startsWith("l.", i)) b.put(key, Long.parseLong(value));
-                    else if (uri.startsWith("s.", i)) b.put(key, Short.parseShort(value));
+                    if      (uri.startsWith("S.", i)) b.putString(key, value);
+                    else if (uri.startsWith("B.", i)) b.putBoolean(key, Boolean.parseBoolean(value));
+                    else if (uri.startsWith("b.", i)) b.putByte(key, Byte.parseByte(value));
+                    else if (uri.startsWith("c.", i)) b.putChar(key, value.charAt(0));
+                    else if (uri.startsWith("d.", i)) b.putDouble(key, Double.parseDouble(value));
+                    else if (uri.startsWith("f.", i)) b.putFloat(key, Float.parseFloat(value));
+                    else if (uri.startsWith("i.", i)) b.putInt(key, Integer.parseInt(value));
+                    else if (uri.startsWith("l.", i)) b.putLong(key, Long.parseLong(value));
+                    else if (uri.startsWith("s.", i)) b.putShort(key, Short.parseShort(value));
                     else throw new URISyntaxException(uri, "unknown EXTRA type", i);
                 }
 
@@ -793,17 +791,6 @@ public class ShadowIntent {
         } catch (IndexOutOfBoundsException e) {
             throw new URISyntaxException(uri, "illegal Intent URI format", i);
         }
-    }
-
-    /**
-     * Call {@link #toUri} with 0 flags.
-     *  Or return the test method setURI's value..
-     * @deprecated Use {@link #toUri} instead.
-     */
-    @Deprecated
-    @Implementation
-    public String toURI() {
-        return (uri == null) ? toUri(0) : uri;
     }
 
     /**
