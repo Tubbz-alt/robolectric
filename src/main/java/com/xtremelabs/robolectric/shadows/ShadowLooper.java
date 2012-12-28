@@ -19,6 +19,7 @@ import static com.xtremelabs.robolectric.Robolectric.shadowOf;
 public class ShadowLooper {
     private static ThreadLocal<Looper> looperForThread = makeThreadLocalLoopers();
     private Scheduler scheduler = new Scheduler();
+    private Thread myThread = Thread.currentThread();
 
     boolean quit;
 
@@ -70,6 +71,11 @@ public class ShadowLooper {
         }
     }
 
+    @Implementation
+    public Thread getThread() {
+    	return myThread;
+    }
+    
     public boolean hasQuit() {
         return quit;
     }
@@ -94,6 +100,11 @@ public class ShadowLooper {
         shadowOf(Looper.getMainLooper()).idle(interval);
     }
 
+
+    public static void idleMainLooperConstantly(boolean shouldIdleConstantly) {
+        shadowOf(Looper.getMainLooper()).idleConstantly(shouldIdleConstantly);
+    }
+
     /**
      * Causes {@link Runnable}s that have been scheduled to run immediately to actually run. Does not advance the
      * scheduler's clock;
@@ -110,6 +121,10 @@ public class ShadowLooper {
      */
     public void idle(long intervalMillis) {
         scheduler.advanceBy(intervalMillis);
+    }
+
+    public void idleConstantly(boolean shouldIdleConstantly) {
+        scheduler.idleConstantly(shouldIdleConstantly);
     }
 
     /**

@@ -6,11 +6,9 @@ import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.Parcel;
 import android.os.Parcelable;
 import com.xtremelabs.robolectric.Robolectric;
 import com.xtremelabs.robolectric.WithTestDefaultsRunner;
-import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -21,12 +19,25 @@ import java.util.Set;
 
 import static com.xtremelabs.robolectric.Robolectric.shadowOf;
 import static junit.framework.Assert.assertEquals;
+import static junit.framework.Assert.assertNull;
 import static junit.framework.Assert.assertTrue;
-import static org.hamcrest.CoreMatchers.*;
-import static org.junit.Assert.*;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.not;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThat;
 
 @RunWith(WithTestDefaultsRunner.class)
 public class IntentTest {
+
+    @Test
+    public void testGetExtraReturnsNull_whenThereAreNoExtrasAdded() throws Exception {
+        Intent intent = new Intent();
+        assertEquals(intent.getExtras(), null);
+    }
+
     @Test
     public void testStringExtra() throws Exception {
         Intent intent = new Intent();
@@ -108,7 +119,7 @@ public class IntentTest {
     @Test
     public void testParcelableExtra() throws Exception {
         Intent intent = new Intent();
-        Parcelable parcelable = new TestParcelable();
+        Parcelable parcelable = new TestParcelable(44);
         assertSame(intent, intent.putExtra("foo", parcelable));
         assertSame(parcelable, intent.getExtras().get("foo"));
         assertSame(parcelable, intent.getParcelableExtra("foo"));
@@ -117,10 +128,10 @@ public class IntentTest {
     @Test
     public void testParcelableArrayExtra() throws Exception {
         Intent intent = new Intent();
-        Parcelable parcelable = new TestParcelable();
+        Parcelable parcelable = new TestParcelable(11);
         intent.putExtra("foo", parcelable);
         assertSame(null, intent.getParcelableArrayExtra("foo"));
-        Parcelable[] parcelables = {new TestParcelable(), new TestParcelable()};
+        Parcelable[] parcelables = {new TestParcelable(12), new TestParcelable(13)};
         assertSame(intent, intent.putExtra("bar", parcelables));
         assertSame(parcelables, intent.getParcelableArrayExtra("bar"));
     }
@@ -128,8 +139,8 @@ public class IntentTest {
     @Test
     public void testParcelableArrayListExtra() {
         Intent intent = new Intent();
-        Parcelable parcel1 = new TestParcelable();
-        Parcelable parcel2 = new TestParcelable();
+        Parcelable parcel1 = new TestParcelable(22);
+        Parcelable parcel2 = new TestParcelable(23);
         ArrayList<Parcelable> parcels = new ArrayList<Parcelable>();
         parcels.add(parcel1);
         parcels.add(parcel2);
@@ -178,8 +189,28 @@ public class IntentTest {
     public void testSetData() throws Exception {
         Intent intent = new Intent();
         Uri uri = Uri.parse("content://this/and/that");
+        intent.setType("abc");
         assertSame(intent, intent.setData(uri));
         assertSame(uri, intent.getData());
+        assertNull(intent.getType());
+    }
+
+    @Test
+    public void testSetType() throws Exception {
+        Intent intent = new Intent();
+        intent.setData(Uri.parse("content://this/and/that"));
+        assertSame(intent, intent.setType("def"));
+        assertNull(intent.getData());
+        assertEquals("def", intent.getType());
+    }
+
+    @Test
+    public void testSetDataAndType() throws Exception {
+        Intent intent = new Intent();
+        Uri uri = Uri.parse("content://this/and/that");
+        assertSame(intent, intent.setDataAndType(uri, "ghi"));
+        assertSame(uri, intent.getData());
+        assertEquals("ghi", intent.getType());
     }
 
     @Test
@@ -270,8 +301,7 @@ public class IntentTest {
 
         intentB.setAction("foo");
         Uri uri = Uri.parse("http://www.foo.com");
-        intentB.setData(uri);
-        intentB.setType("text/html");
+        intentB.setDataAndType(uri, "text/html");
         String category = "category";
         intentB.addCategory(category);
         intentB.setPackage("com.foobar.app");
@@ -452,17 +482,6 @@ public class IntentTest {
         @Override
         public int hashCode() {
             return someValue != null ? someValue.hashCode() : 0;
-        }
-    }
-
-    private class TestParcelable implements Parcelable {
-        @Override
-        public int describeContents() {
-            return 0;
-        }
-
-        @Override
-        public void writeToParcel(Parcel dest, int flags) {
         }
     }
 

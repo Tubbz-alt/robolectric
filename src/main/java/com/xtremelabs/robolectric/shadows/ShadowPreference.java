@@ -226,8 +226,7 @@ public class ShadowPreference {
 	}
 
 	@Implementation
-	public Preference.OnPreferenceChangeListener getOnPreferenceChangeListener()
-	{
+	public Preference.OnPreferenceChangeListener getOnPreferenceChangeListener() {
 		return onPreferenceChangeListener;
 	}
 

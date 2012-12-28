@@ -25,9 +25,13 @@ import org.xml.sax.SAXException;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
-import java.io.*;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.PrintStream;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
@@ -265,7 +269,8 @@ public class RobolectricTestRunner extends BlockJUnit4ClassRunner implements Rob
 
     @Override protected Statement methodBlock(final FrameworkMethod method) {
         setupI18nStrictState(method.getMethod(), robolectricConfig);
-
+        lookForLocaleAnnotation( method.getMethod(), robolectricConfig );
+        
     	if (classHandler != null) {
             classHandler.configure(robolectricConfig);
             classHandler.beforeTest();
@@ -275,9 +280,20 @@ public class RobolectricTestRunner extends BlockJUnit4ClassRunner implements Rob
         final Statement statement = super.methodBlock(method);
         return new Statement() {
             @Override public void evaluate() throws Throwable {
-                // todo: this try/finally probably isn't right -- should mimic RunAfters? [xw]
+            	HashMap<Field,Object> withConstantAnnos = getWithConstantAnnotations(method.getMethod());
+
+            	// todo: this try/finally probably isn't right -- should mimic RunAfters? [xw]
                 try {
-                    statement.evaluate();
+                	if (withConstantAnnos.isEmpty()) {
+                		statement.evaluate();
+                	}
+                	else {
+                		synchronized(this) {
+	                		setupConstants(withConstantAnnos);
+	                		statement.evaluate();
+	                		setupConstants(withConstantAnnos);
+                		}
+                	}
                 } finally {
                     delegate.internalAfterTest(method.getMethod());
                     if (classHandler != null) {
@@ -342,7 +358,8 @@ public class RobolectricTestRunner extends BlockJUnit4ClassRunner implements Rob
 
     public void setupApplicationState(final RobolectricConfig robolectricConfig) {
         setupLogging();
-        ResourceLoader resourceLoader = createResourceLoader(robolectricConfig);
+        
+        ResourceLoader resourceLoader = createResourceLoader(robolectricConfig );
 
         Robolectric.bindDefaultShadowClasses();
         bindShadowClasses();
@@ -355,9 +372,7 @@ public class RobolectricTestRunner extends BlockJUnit4ClassRunner implements Rob
 
         Robolectric.application = ShadowApplication.bind(createApplication(), resourceLoader);
     }
-
-
-
+    
     /**
      * Override this method to bind your own shadow classes
      */
@@ -402,7 +417,7 @@ public class RobolectricTestRunner extends BlockJUnit4ClassRunner implements Rob
 
 		robolectricConfig.setStrictI18n(strictI18n);
     }
-
+    
     /**
      * Default implementation of global switch for i18n-strict mode.
      * To enable i18n-strict mode globally, set the system property
@@ -442,6 +457,106 @@ public class RobolectricTestRunner extends BlockJUnit4ClassRunner implements Rob
 		return strictI18n;
 	}
 
+	private void lookForLocaleAnnotation( Method method, RobolectricConfig robolectricConfig ) {
+		String qualifiers = "";
+		// TODO: there are maybe better implementation for getAnnotation
+		// Have tried to use several other simple ways, but failed.
+		
+		Annotation[] annos = method.getDeclaredAnnotations();
+		for( Annotation anno: annos ){
+			
+			if( anno.annotationType().getName().equals( "com.xtremelabs.robolectric.annotation.Values" )){
+				try {
+					qualifiers = (String) getAnnotationFieldValue( anno, "qualifiers" );
+					
+					if( qualifiers.isEmpty() ){
+						qualifiers = (String) getAnnotationFieldValue( anno, "locale" );
+					}
+				} catch ( Exception e ) {
+					throw new RuntimeException( e );
+				}
+			}
+		}
+		
+		robolectricConfig.setValuesResQualifiers( qualifiers );
+	}
+
+    private Object getAnnotationFieldValue(Annotation anno, String method ) throws Exception {
+    	return anno.annotationType().getMethod(method).invoke(anno);
+    }
+    
+	/**
+	 * Find all the class and method annotations and pass them to
+	 * addConstantFromAnnotation() for evaluation.
+	 * 
+	 * TODO: Add compound annotations to suport defining more than one int and string at a time
+	 * TODO: See http://stackoverflow.com/questions/1554112/multiple-annotations-of-the-same-type-on-one-element 
+	 * 
+	 * @param method
+	 * @return 
+	 */
+    private HashMap<Field,Object> getWithConstantAnnotations(Method method) {
+    	HashMap<Field,Object> constants = new HashMap<Field,Object>();
+    	
+    	for(Annotation anno:method.getDeclaringClass().getAnnotations()) {
+    		addConstantFromAnnotation(constants, anno);
+    	}
+ 
+    	for(Annotation anno:method.getAnnotations()) {
+    		addConstantFromAnnotation(constants, anno);
+    	}
+    	
+    	return constants;
+    }
+    
+    
+    /**
+     * If the annotation is a constant redefinition, add it to the provided hash
+     * 
+     * @param constants
+     * @param anno
+     */
+    private void addConstantFromAnnotation(HashMap<Field,Object> constants, Annotation anno) {
+        try {
+        	String name = anno.annotationType().getName();
+        	Object newValue = null;
+    	
+	    	if (name.equals( "com.xtremelabs.robolectric.annotation.WithConstantString" )) {
+	    		newValue = (String) anno.annotationType().getMethod("newValue").invoke(anno);
+	    	} 
+	    	else if (name.equals( "com.xtremelabs.robolectric.annotation.WithConstantInt" )) {
+	    		newValue = (Integer) anno.annotationType().getMethod("newValue").invoke(anno);
+	    	}
+	    	else {
+	    		return;
+	    	}
+
+    		@SuppressWarnings("rawtypes")
+			Class classWithField = (Class) anno.annotationType().getMethod("classWithField").invoke(anno);
+    		String fieldName = (String) anno.annotationType().getMethod("fieldName").invoke(anno);
+            Field field = classWithField.getDeclaredField(fieldName);
+            constants.put(field, newValue);	    	
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }   	
+    }
+    
+    /**
+     * Defines static finals from the provided hash and stores the old values back
+     * into the hash.
+     * 
+     * Call it twice with the same hash, and it puts everything back the way it was originally.
+     * 
+     * @param constants
+     */
+    private void setupConstants(HashMap<Field,Object> constants) {
+    	for(Field field:constants.keySet()) {
+    		Object newValue = constants.get(field);
+    		Object oldValue = Robolectric.Reflection.setFinalStaticField(field, newValue);
+    		constants.put(field,oldValue);
+    	}
+    }
+	
     private void setupLogging() {
         String logging = System.getProperty("robolectric.logging");
         if (logging != null && ShadowLog.stream == null) {
@@ -481,17 +596,23 @@ public class RobolectricTestRunner extends BlockJUnit4ClassRunner implements Rob
 
     private ResourceLoader createResourceLoader(final RobolectricConfig robolectricConfig) {
         ResourceLoader resourceLoader = resourceLoaderForRootAndDirectory.get(robolectricConfig);
-        if (resourceLoader == null) {
+        
+        if (resourceLoader == null ) {
             try {
                 robolectricConfig.validate();
 
                 String rClassName = robolectricConfig.getRClassName();
                 Class rClass = Class.forName(rClassName);
-                resourceLoader = new ResourceLoader(robolectricConfig.getRealSdkVersion(), rClass, robolectricConfig.getResourceDirectory(), robolectricConfig.getAssetsDirectory());
+                resourceLoader = new ResourceLoader(robolectricConfig.getRealSdkVersion(), rClass, robolectricConfig.getResourceDirectory(), robolectricConfig.getAssetsDirectory() );
                 resourceLoaderForRootAndDirectory.put(robolectricConfig, resourceLoader);
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
+        }
+        
+        // When locale has changed, reload values resource files.
+        else if(robolectricConfig.isValuesResQualifiersChanged()){
+        	resourceLoader.reloadValuesResouces( robolectricConfig.getValuesResQualifiers() );
         }
 
         resourceLoader.setStrictI18n(robolectricConfig.getStrictI18n());

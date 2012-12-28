@@ -8,6 +8,8 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteCursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.KeyEvent;
@@ -17,6 +19,7 @@ import com.xtremelabs.robolectric.ApplicationResolver;
 import com.xtremelabs.robolectric.R;
 import com.xtremelabs.robolectric.Robolectric;
 import com.xtremelabs.robolectric.WithTestDefaultsRunner;
+import com.xtremelabs.robolectric.shadows.testing.OnMethodTestActivity;
 import com.xtremelabs.robolectric.util.TestRunnable;
 import com.xtremelabs.robolectric.util.Transcript;
 import org.hamcrest.CoreMatchers;
@@ -340,6 +343,26 @@ public class ActivityTest {
         int id = activity.getResources().getIdentifier("just_alot_of_crap", "string", "com.xtremelabs.robolectric");
         assertTrue(id == 0);
     }
+    
+    @Test
+    public void setDefaultKeyMode_shouldSetKeyMode() {
+    	int[] modes = {
+    			Activity.DEFAULT_KEYS_DISABLE,
+    			Activity.DEFAULT_KEYS_SHORTCUT,
+    			Activity.DEFAULT_KEYS_DIALER,
+    			Activity.DEFAULT_KEYS_SEARCH_LOCAL,
+    			Activity.DEFAULT_KEYS_SEARCH_GLOBAL
+    	};
+    	Activity activity = new Activity();
+    	ShadowActivity shadow = shadowOf(activity);
+    	
+    	for (int mode: modes) {
+    		activity.setDefaultKeyMode(mode);
+    		assertThat("Unexpected key mode",
+    				shadow.getDefaultKeymode(),
+    				equalTo(mode));
+    	}
+    }
 
     @Test
     public void shouldSetContentViewWithFrameLayoutAsParent() throws Exception {
@@ -430,6 +453,45 @@ public class ActivityTest {
         assertEquals(5, storedValue.intValue());
     }
 
+    @Test
+    public void pauseAndThenResumeGoesThroughTheFullLifeCycle() throws Exception {
+        TestActivity activity = new TestActivity();
+
+        ShadowActivity shadow = shadowOf(activity);
+        shadow.pauseAndThenResume();
+
+        activity.transcript.assertEventsSoFar(
+                "onPause",
+                "onStop",
+                "onRestart",
+                "onStart",
+                "onResume"
+        );
+     
+    }
+    
+    @Test
+    public void startAndStopManagingCursorTracksCursors() throws Exception {
+        TestActivity activity = new TestActivity();
+
+        ShadowActivity shadow = shadowOf(activity);
+        
+        assertThat( shadow.getManagedCursors(), notNullValue() );
+        assertThat( shadow.getManagedCursors().size(), equalTo(0) );  
+        
+        Cursor c = Robolectric.newInstanceOf(SQLiteCursor.class);
+        activity.startManagingCursor(c);
+
+        assertThat( shadow.getManagedCursors(), notNullValue() );
+        assertThat( shadow.getManagedCursors().size(), equalTo(1) );
+        assertThat( shadow.getManagedCursors().get(0), sameInstance(c) );
+
+        activity.stopManagingCursor(c);
+        
+        assertThat( shadow.getManagedCursors(), notNullValue() );
+        assertThat( shadow.getManagedCursors().size(), equalTo(0) );
+    }
+
 	@Test
 	public void allowsAParentToBeSetThroughShadow()
 	{
@@ -509,9 +571,78 @@ public class ActivityTest {
         }
 
         @Override
+        public void onRestart() {
+            transcript.add("onRestart");
+            super.onRestart();
+        }
+
+        @Override
         public void onResume() {
             transcript.add("onResume");
             super.onResume();
+        }
+    }
+
+    @Test
+    public void callOnXxxMethods_shouldCallProtectedVersions() throws Exception {
+        final Transcript transcript = new Transcript();
+
+        Activity activity = new OnMethodTestActivity(transcript);
+
+        ShadowActivity shadowActivity = shadowOf(activity);
+
+        Bundle bundle = new Bundle();
+        bundle.putString("key", "value");
+        shadowActivity.callOnCreate(bundle);
+        transcript.assertEventsSoFar("onCreate was called with value");
+
+        shadowActivity.callOnStart();
+        transcript.assertEventsSoFar("onStart was called");
+
+        shadowActivity.callOnRestoreInstanceState(null);
+        transcript.assertEventsSoFar("onRestoreInstanceState was called");
+
+        shadowActivity.callOnPostCreate(null);
+        transcript.assertEventsSoFar("onPostCreate was called");
+
+        shadowActivity.callOnRestart();
+        transcript.assertEventsSoFar("onRestart was called");
+
+        shadowActivity.callOnResume();
+        transcript.assertEventsSoFar("onResume was called");
+
+        shadowActivity.callOnPostResume();
+        transcript.assertEventsSoFar("onPostResume was called");
+
+        Intent intent = new Intent("some action");
+        shadowActivity.callOnNewIntent(intent);
+        transcript.assertEventsSoFar("onNewIntent was called with " + intent);
+
+        shadowActivity.callOnSaveInstanceState(null);
+        transcript.assertEventsSoFar("onSaveInstanceState was called");
+
+        shadowActivity.callOnPause();
+        transcript.assertEventsSoFar("onPause was called");
+
+        shadowActivity.callOnUserLeaveHint();
+        transcript.assertEventsSoFar("onUserLeaveHint was called");
+
+        shadowActivity.callOnStop();
+        transcript.assertEventsSoFar("onStop was called");
+
+        shadowActivity.callOnDestroy();
+        transcript.assertEventsSoFar("onDestroy was called");
+    }
+
+    @Test
+    public void callOnXxxMethods_shouldWorkIfNotDeclaredOnConcreteClass() throws Exception {
+        Activity activity = new Activity() {};
+        shadowOf(activity).callOnStart();
+    }
+
+    private static class MyActivity extends Activity {
+        @Override protected void onDestroy() {
+            super.onDestroy();
         }
     }
 

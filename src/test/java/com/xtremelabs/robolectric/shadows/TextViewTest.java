@@ -6,6 +6,7 @@ import android.text.*;
 import android.text.method.ArrowKeyMovementMethod;
 import android.text.method.MovementMethod;
 import android.text.style.URLSpan;
+import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
@@ -27,6 +28,7 @@ import java.util.Random;
 import static com.xtremelabs.robolectric.Robolectric.shadowOf;
 import static java.util.Arrays.asList;
 import static junit.framework.Assert.assertFalse;
+import static junit.framework.Assert.assertTrue;
 import static org.hamcrest.CoreMatchers.*;
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.mock;
@@ -356,6 +358,57 @@ public class TextViewTest {
         shadowOf(textView).setLayout(layout);
         assertEquals(textView.getLayout(), layout);
     }
+    
+    @Test
+    public void testGetError() {
+      assertNull(textView.getError());
+      CharSequence error = "myError";
+      textView.setError(error);
+      assertEquals(error, textView.getError());
+    }
+
+    @Test
+    public void canSetAndGetInputFilters() throws Exception {
+        final InputFilter[] expectedFilters = new InputFilter[] { new InputFilter.LengthFilter(1) };
+        textView.setFilters(expectedFilters);
+        assertThat(textView.getFilters(), is(expectedFilters));
+    }
+
+    @Test
+    public void testHasSelectionReturnsTrue() {
+        textView.setText("1");
+        shadowOf(textView).setSelection(0, 0);
+        assertTrue(textView.hasSelection());
+    }
+
+    @Test
+    public void testHasSelectionReturnsFalse() {
+        textView.setText("1");
+        assertFalse(textView.hasSelection());
+    }
+
+    @Test
+    public void setTextSize_shouldHandleDips() throws Exception {
+        shadowOf(Robolectric.application.getResources()).setDensity(1.5f);
+        textView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 10);
+        assertThat(textView.getTextSize(), equalTo(15f));
+        textView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 20);
+        assertThat(textView.getTextSize(), equalTo(30f));
+    }
+
+    @Test
+    public void setTextSize_shouldHandlePixels() throws Exception {
+        shadowOf(Robolectric.application.getResources()).setDensity(1.5f);
+        textView.setTextSize(TypedValue.COMPLEX_UNIT_PX, 10);
+        assertThat(textView.getTextSize(), equalTo(10f));
+        textView.setTextSize(TypedValue.COMPLEX_UNIT_PX, 20);
+        assertThat(textView.getTextSize(), equalTo(20f));
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void setTextSize_shouldThrowAnArgumentErrorForOtherUnits() throws Exception {
+        textView.setTextSize(TypedValue.COMPLEX_UNIT_MM, 13);
+    }
 
     private List<MockTextWatcher> anyNumberOfTextWatchers() {
         List<MockTextWatcher> mockTextWatchers = new ArrayList<MockTextWatcher>();
@@ -460,5 +513,11 @@ public class TextViewTest {
         public boolean canSelectArbitrarily() {
             return false;
         }
+
+		@Override
+		public boolean onGenericMotionEvent(TextView widget, Spannable text,
+				MotionEvent event) {
+			return false;
+		}
     }
 }

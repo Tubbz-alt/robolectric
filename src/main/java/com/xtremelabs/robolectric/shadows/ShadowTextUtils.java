@@ -11,6 +11,11 @@ import java.util.Collection;
 @Implements(TextUtils.class)
 public class ShadowTextUtils {
     @Implementation
+    public static boolean equals(CharSequence a, CharSequence b) {
+        return (a == b) || (a instanceof String && a.equals(b));
+    }
+
+    @Implementation
     public static CharSequence expandTemplate(CharSequence template,
                                               CharSequence... values) {
         String s = template.toString();
@@ -45,5 +50,43 @@ public class ShadowTextUtils {
           }
         }
         return true;
+    }
+    
+    @Implementation
+    public static String[] split(String text, String expression) {
+    	if(text.length() == 0) {
+    		return new String[]{};
+    	}
+    	
+    	return text.split(expression);
+    }
+
+    @Implementation
+    public static String htmlEncode(String s) {
+        StringBuilder sb = new StringBuilder();
+        char c;
+        for (int i = 0; i < s.length(); i++) {
+            c = s.charAt(i);
+            switch (c) {
+                case '<':
+                    sb.append("&lt;"); //$NON-NLS-1$
+                    break;
+                case '>':
+                    sb.append("&gt;"); //$NON-NLS-1$
+                    break;
+                case '&':
+                    sb.append("&amp;"); //$NON-NLS-1$
+                    break;
+                case '\'':
+                    sb.append("&apos;"); //$NON-NLS-1$
+                    break;
+                case '"':
+                    sb.append("&quot;"); //$NON-NLS-1$
+                    break;
+                default:
+                    sb.append(c);
+            }
+        }
+        return sb.toString();
     }
 }

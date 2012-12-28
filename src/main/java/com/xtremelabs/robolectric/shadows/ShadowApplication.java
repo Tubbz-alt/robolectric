@@ -2,10 +2,17 @@ package com.xtremelabs.robolectric.shadows;
 
 import android.app.Application;
 import android.appwidget.AppWidgetManager;
-import android.content.*;
+import android.content.BroadcastReceiver;
+import android.content.ComponentName;
+import android.content.ContentResolver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.ServiceConnection;
 import android.content.res.Resources;
 import android.os.IBinder;
 import android.os.Looper;
+import android.os.PowerManager;
 import android.view.LayoutInflater;
 import android.widget.Toast;
 import com.xtremelabs.robolectric.Robolectric;
@@ -16,7 +23,11 @@ import com.xtremelabs.robolectric.res.ResourceLoader;
 import com.xtremelabs.robolectric.tester.org.apache.http.FakeHttpLayer;
 import com.xtremelabs.robolectric.util.Scheduler;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 
 import static com.xtremelabs.robolectric.Robolectric.newInstanceOf;
 import static com.xtremelabs.robolectric.Robolectric.shadowOf;
@@ -30,22 +41,23 @@ public class ShadowApplication extends ShadowContextWrapper {
     private static final Map<String, String> SYSTEM_SERVICE_MAP = new HashMap<String, String>();
 
     static {
-        // note that this one is different!
+        // note that these are different!
+    	// They specify concrete classes within Robolectric for interfaces or abstract classes defined by Android
         SYSTEM_SERVICE_MAP.put(Context.WINDOW_SERVICE, "com.xtremelabs.robolectric.tester.android.view.TestWindowManager");
-
+        SYSTEM_SERVICE_MAP.put(Context.CLIPBOARD_SERVICE, "com.xtremelabs.robolectric.tester.android.text.TestClipboardManager");
+        SYSTEM_SERVICE_MAP.put(Context.SENSOR_SERVICE, "android.hardware.TestSensorManager");
+        SYSTEM_SERVICE_MAP.put(Context.VIBRATOR_SERVICE, "android.os.TestVibrator");
+        
         // the rest are as mapped in docs...
         SYSTEM_SERVICE_MAP.put(Context.LAYOUT_INFLATER_SERVICE, "android.view.LayoutInflater");
         SYSTEM_SERVICE_MAP.put(Context.ACTIVITY_SERVICE, "android.app.ActivityManager");
         SYSTEM_SERVICE_MAP.put(Context.POWER_SERVICE, "android.os.PowerManager");
         SYSTEM_SERVICE_MAP.put(Context.ALARM_SERVICE, "android.app.AlarmManager");
-        SYSTEM_SERVICE_MAP.put(Context.CLIPBOARD_SERVICE, "android.text.ClipboardManager");
         SYSTEM_SERVICE_MAP.put(Context.NOTIFICATION_SERVICE, "android.app.NotificationManager");
         SYSTEM_SERVICE_MAP.put(Context.KEYGUARD_SERVICE, "android.app.KeyguardManager");
         SYSTEM_SERVICE_MAP.put(Context.LOCATION_SERVICE, "android.location.LocationManager");
         SYSTEM_SERVICE_MAP.put(Context.SEARCH_SERVICE, "android.app.SearchManager");
-        SYSTEM_SERVICE_MAP.put(Context.SENSOR_SERVICE, "android.hardware.SensorManager");
         SYSTEM_SERVICE_MAP.put(Context.STORAGE_SERVICE, "android.os.storage.StorageManager");
-        SYSTEM_SERVICE_MAP.put(Context.VIBRATOR_SERVICE, "android.os.Vibrator");
         SYSTEM_SERVICE_MAP.put(Context.CONNECTIVITY_SERVICE, "android.net.ConnectivityManager");
         SYSTEM_SERVICE_MAP.put(Context.WIFI_SERVICE, "android.net.wifi.WifiManager");
         SYSTEM_SERVICE_MAP.put(Context.AUDIO_SERVICE, "android.media.AudioManager");
@@ -72,6 +84,7 @@ public class ShadowApplication extends ShadowContextWrapper {
     private Scheduler backgroundScheduler = new Scheduler();
     private Map<String, Map<String, Object>> sharedPreferenceMap = new HashMap<String, Map<String, Object>>();
     private ArrayList<Toast> shownToasts = new ArrayList<Toast>();
+    private PowerManager.WakeLock latestWakeLock;
     private ShadowAlertDialog latestAlertDialog;
     private ShadowDialog latestDialog;
     private Object bluetoothAdapter = Robolectric.newInstanceOf("android.bluetooth.BluetoothAdapter");
@@ -104,7 +117,7 @@ public class ShadowApplication extends ShadowContextWrapper {
     public List<Toast> getShownToasts() {
         return shownToasts;
     }
-
+    
     public Scheduler getBackgroundScheduler() {
         return backgroundScheduler;
     }
@@ -155,7 +168,7 @@ public class ShadowApplication extends ShadowContextWrapper {
             return service;
         }
     }
-
+    
     @Implementation
     @Override
     public void startActivity(Intent intent) {
@@ -416,6 +429,25 @@ public class ShadowApplication extends ShadowContextWrapper {
         }
     }
 
+    public boolean hasReceiverForIntent(Intent intent) {
+        for (Wrapper wrapper : registeredReceivers) {
+            if (wrapper.intentFilter.matchAction(intent.getAction())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public List<BroadcastReceiver> getReceiversForIntent(Intent intent) {
+        ArrayList<BroadcastReceiver> broadcastReceivers = new ArrayList<BroadcastReceiver>();
+        for (Wrapper wrapper : registeredReceivers) {
+            if (wrapper.intentFilter.matchAction(intent.getAction())) {
+                broadcastReceivers.add(wrapper.getBroadcastReceiver());
+            }
+        }
+        return broadcastReceivers;
+    }
+
     /**
      * Non-Android accessor.
      *
@@ -483,6 +515,18 @@ public class ShadowApplication extends ShadowContextWrapper {
 
     public void setSystemService(String key, Object service) {
         systemServices.put(key, service);
+    }
+    
+    public PowerManager.WakeLock getLatestWakeLock() {
+    	return latestWakeLock;
+    }
+    
+    public void addWakeLock( PowerManager.WakeLock wl ) {
+    	latestWakeLock = wl;
+    }
+    
+    public void clearWakeLocks() {
+    	latestWakeLock = null;
     }
 
     public class Wrapper {
