@@ -142,6 +142,7 @@ public class ResourceLoader {
 				loadViewResources( systemResourceDir, resourceDir );
 				loadMenuResources( resourceDir );
 				loadDrawableResources( resourceDir );
+				loadBooleanResources( localValueResourceDir, systemValueResourceDir );
 				loadPreferenceResources( preferenceDir );
 				loadXmlFileResources( preferenceDir );
 				
@@ -178,6 +179,7 @@ public class ResourceLoader {
 			loadValueResources( localValueResourceDir, systemValueResourceDir );
 			loadDimenResources( localValueResourceDir, systemValueResourceDir );
 			loadIntegerResource( localValueResourceDir, systemValueResourceDir );
+			loadBooleanResources( localValueResourceDir, systemValueResourceDir );
 			loadMenuResources( resourceDir );
 			loadPreferenceResources( preferenceDir );
 		} catch ( Exception e ) {
@@ -194,6 +196,11 @@ public class ResourceLoader {
 		loadValueResourcesFromDirs( stringResourceDocumentLoader, localResourceDir, systemValueResourceDir );
 	}
 
+	private void loadBooleanResources( File localResourceDir, File systemValueResourceDir ) throws Exception {
+		DocumentLoader boolResourceDocumentLoader = new DocumentLoader( this.boolResourceLoader );
+	  	loadValueResourcesFromDirs( boolResourceDocumentLoader, localResourceDir, systemValueResourceDir );
+	}
+	
 	private void loadPluralsResources( File localResourceDir, File systemValueResourceDir ) throws Exception {
 		DocumentLoader stringResourceDocumentLoader = new DocumentLoader( this.pluralResourceLoader );
 		loadValueResourcesFromDirs( stringResourceDocumentLoader, localResourceDir, systemValueResourceDir );
