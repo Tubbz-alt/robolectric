@@ -32,7 +32,9 @@ public class AndroidTranslator implements Translator {
         instrumentingList.add("android.");
         instrumentingList.add("com.google.android.maps");
         instrumentingList.add("org.apache.http.impl.client.DefaultRequestDirector");
-
+        instrumentingList.add("com.actionbarsherlock.app.SherlockPreferenceActivity");
+        instrumentingList.add("com.actionbarsherlock.app.SherlockActivity");
+        
         instrumentingExcludeList.add("android.support.v4.app.NotificationCompat");
         instrumentingExcludeList.add("android.support.v4.util.LruCache");
     }
