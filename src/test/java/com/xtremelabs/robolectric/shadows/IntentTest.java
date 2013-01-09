@@ -415,7 +415,7 @@ public class IntentTest {
     }
 
     @Test
-    public void toUriCapturesIntentDetails()  {
+    public void toUriCapturesIntentDetailsWithDataAndType()  {
         Activity context = new Activity();
         Robolectric.shadowOf(context).setPackageName("com.xtremelabs.robolectric");
         Intent intent = new Intent(context, this.getClass());
@@ -424,9 +424,25 @@ public class IntentTest {
         intent.putExtra("strex", "stringvalue");
         intent.putExtra("intex", 5);
         intent.putExtra("doubleex", 3.14);
+        String expected = "intent://www.example.com#Intent;scheme=http;" +
+                "action=android.intent.action.EDIT;type=myType;launchFlags=0x1;" +
+                "component=com.xtremelabs.robolectric/.shadows.IntentTest;" +
+                "d.doubleex=3.14;i.intex=5;S.strex=stringvalue;end";
+        assertThat(intent.toUri(Intent.URI_INTENT_SCHEME), equalTo(expected));
+    }
+
+    @Test
+    public void toUriCapturesIntentDetailsWithoutDataAndType()  {
+        Activity context = new Activity();
+        Robolectric.shadowOf(context).setPackageName("com.xtremelabs.robolectric");
+        Intent intent = new Intent(context, this.getClass());
+        intent.setAction(Intent.ACTION_EDIT);
+        intent.putExtra("strex", "stringvalue");
+        intent.putExtra("intex", 5);
+        intent.putExtra("doubleex", 3.14);
         String expected = "intent:#Intent;action=android.intent.action.EDIT;" +
-                          "launchFlags=0x1;component=com.xtremelabs.robolectric/.shadows.IntentTest;" +
-                          "d.doubleex=3.14;i.intex=5;S.strex=stringvalue;end";
+                "launchFlags=0x1;component=com.xtremelabs.robolectric/.shadows.IntentTest;" +
+                "d.doubleex=3.14;i.intex=5;S.strex=stringvalue;end";
         assertThat(intent.toUri(Intent.URI_INTENT_SCHEME), equalTo(expected));
     }
 
@@ -435,6 +451,7 @@ public class IntentTest {
         Intent intent = new Intent();
         Class<? extends IntentTest> thisClass = getClass();
         intent.setClassName("package.name", thisClass.getName());
+        intent.setDataAndType(Uri.parse("http://www.example.com"), "myType");
         intent.putExtra("foo", 123);
         intent.setAction(Intent.ACTION_DIAL);
         final String s = intent.toUri(Intent.URI_INTENT_SCHEME);

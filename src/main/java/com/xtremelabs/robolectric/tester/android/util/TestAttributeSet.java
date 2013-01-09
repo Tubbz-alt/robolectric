@@ -72,7 +72,7 @@ public class TestAttributeSet implements AttributeSet {
     public int getAttributeIntValue(String namespace, String attribute, int defaultValue) {
         String value = getAttributeValueInMap(namespace, attribute);
 
-        if (attrResourceLoader.hasAttributeFor(viewClass, "xxx", attribute)) {
+        if (attrResourceLoader != null && attrResourceLoader.hasAttributeFor(viewClass, "xxx", attribute)) {
             value = attrResourceLoader.convertValueToEnum(viewClass, "xxx", attribute, value);
         }
 

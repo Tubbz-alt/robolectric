@@ -36,7 +36,7 @@ import com.xtremelabs.robolectric.res.XmlFileLoader.XmlResourceParserImpl;
  * that this implementation will behave exactly as 
  * the android implementation.
  * 
- * <p>Please not that this implementation uses the resource file "xml/preferences"
+ * <p>Please note that this implementation uses the resource file "xml/preferences"
  * to test the parser implementation. If that file is changed
  * some test may start failing.
  * 
@@ -266,7 +266,7 @@ public class XmlFileLoaderTest {
 	public void testGetDepth() throws XmlPullParserException, IOException {
 		// Recorded depths from preference file elements
 		int[] expected = new int[] {
-				1, 2, 3, 2, 2, 2, 2, 2
+				1, 2, 3, 2, 2, 2, 2, 2, 2, 3
 		};
 		int index = -1;
 		int evt;
@@ -484,6 +484,10 @@ public class XmlFileLoaderTest {
 						XmlPullParser.START_TAG, // Preference
 						XmlPullParser.END_TAG,
 						XmlPullParser.START_TAG, //RingtonePreference
+						XmlPullParser.END_TAG,
+						XmlPullParser.START_TAG, // PreferenceScreen
+							XmlPullParser.START_TAG, // Preference
+							XmlPullParser.END_TAG,
 						XmlPullParser.END_TAG,
 					XmlPullParser.END_TAG,
 				XmlPullParser.END_DOCUMENT
