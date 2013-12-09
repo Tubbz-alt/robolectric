@@ -31,4 +31,13 @@ public class IntentFilterTest {
         assertThat(intentFilter.getDataAuthority(1).getHost(), equalTo("example.com"));
         assertThat(intentFilter.getDataAuthority(1).getPort(), equalTo(42));
     }
+
+	@Test
+	public void setAndGetPriority() {
+		IntentFilter intentFilter = new IntentFilter();
+
+		intentFilter.setPriority(2999);
+
+		assertThat(intentFilter.getPriority(), equalTo(2999));
+	}
 }

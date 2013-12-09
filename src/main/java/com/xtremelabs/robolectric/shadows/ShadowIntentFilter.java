@@ -23,8 +23,9 @@ public class ShadowIntentFilter {
     List<String> schemes = new ArrayList<String>();
     List<IntentFilter.AuthorityEntry> authoritites = new ArrayList<IntentFilter.AuthorityEntry>();
     List<String> categories = new ArrayList<String>();
-    
-    public void __constructor__(String action) {
+	private int mPriority;
+
+	public void __constructor__(String action) {
         actions.add(action);
     }
 
@@ -102,6 +103,17 @@ public class ShadowIntentFilter {
     	}
     	return true;
     }
+
+	@Implementation
+    public int getPriority() {
+        return mPriority;
+    }
+
+	@Implementation
+    public void setPriority(int priority) {
+        mPriority = priority;
+    }
+
     
     @Override @Implementation
     public boolean equals(Object o) {
